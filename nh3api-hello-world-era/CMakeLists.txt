@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.10)
+project(NH3APIHelloWorld LANGUAGES CXX)
+add_library(NH3APIHelloWorld SHARED dllmain.cpp)
+SET(NH3API_CMAKE_USE_ERA ON CACHE BOOL "Build ERA support module")
+add_subdirectory(nh3api)
+target_link_libraries(NH3APIHelloWorld PRIVATE nh3api)
