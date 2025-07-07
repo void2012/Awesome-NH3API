@@ -1,5 +1,6 @@
 #include <nh3api/core.hpp>
 
+// Display a "Hello, World!" dialog before the 3DO intro
 void __stdcall HelloWorld(HiHook* hook, void* _this)
 {
     NormalDialog("Hello, World!");
@@ -16,13 +17,9 @@ BOOL APIENTRY DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
             return false;
         PatcherInstance* instance = patcher->CreateInstance("HD.Plugin.NH3API.HelloWorld");
         if ( instance )
-        {
             instance->WriteHiHook(0x4EEE31, CALL_, EXTENDED_, THISCALL_, &HelloWorld);
-        }
         else
-        {
             return false;
-        }
     }
     return true;
 }
