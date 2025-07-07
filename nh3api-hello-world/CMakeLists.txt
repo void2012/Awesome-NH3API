@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.10)
+project(NH3APIHelloWorld LANGUAGES CXX)
+add_library(NH3APIHelloWorld SHARED dllmain.cpp)
+add_subdirectory(nh3api)
+target_link_libraries(NH3APIHelloWorld PRIVATE nh3api)
