@@ -1,0 +1,4 @@
+[submodule "H3Landscape"]
+	path = H3Landscape
+	url = https://github.com/Paracelsus83/H3Landscape.git
+	branch = main
