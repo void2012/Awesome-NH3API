@@ -1,0 +1,84 @@
+name: Update submodules on upstream releases
+
+on:
+  schedule:
+    - cron: '0 0 * * MON'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout parent repo
+        uses: actions/checkout@v4
+        with:
+          # GITHUB_TOKEN is used automatically; no secrets needed
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Check and update submodules
+        env:
+          # Use the built-in token for API calls (higher rate limit than anonymous)
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          declare -A SUBMODULES=(
+            ["submodules/submodule-repo"]="OWNER/submodule-repo"
+          )
+
+          for SUB_PATH in "${!SUBMODULES[@]}"; do
+            REPO="${SUBMODULES[$SUB_PATH]}"
+            echo "Checking $REPO for submodule at $SUB_PATH"
+
+            LATEST_TAG=$(curl -fsSL \
+              -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/repos/$REPO/releases/latest" \
+              | jq -r '.tag_name // empty')
+
+            if [ -z "$LATEST_TAG" ]; then
+              echo "No latest release found for $REPO, skipping"
+              continue
+            fi
+
+            cd "$SUB_PATH"
+            git fetch --tags
+            CURRENT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+
+            if [ "$CURRENT_TAG" = "$LATEST_TAG" ]; then
+              echo "Already at latest tag $LATEST_TAG"
+              cd -
+              continue
+            fi
+
+            git checkout "$LATEST_TAG"
+            cd -
+
+            git add "$SUB_PATH"
+
+            if git diff --cached --quiet; then
+              echo "No changes for $SUB_PATH"
+              continue
+            fi
+
+            BRANCH="auto/update-${SUB_PATH//\//-}-to-${LATEST_TAG}"
+            git checkout -b "$BRANCH"
+            git commit -m "chore: update $SUB_PATH to $LATEST_TAG"
+            git push -u origin "$BRANCH"
+
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore: update $SUB_PATH to $LATEST_TAG" \
+              --body "Auto-updated submodule pointer to release \`${LATEST_TAG}\`."
+          done
